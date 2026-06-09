@@ -2,6 +2,7 @@ package com.example.ai_budget_app.ui.statistics
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
@@ -35,7 +36,9 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StatisticsScreen() {
+fun StatisticsScreen(
+    onCategoryClick: (String) -> Unit = {}
+) {
     val context = LocalContext.current
     val repository = remember { ExpenseRepository(AppDatabase.getDatabase(context).expenseDao()) }
     val viewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(repository))
@@ -172,7 +175,12 @@ fun StatisticsScreen() {
                             Column(modifier = Modifier.weight(1f)) {
                                 pieChartDataList.forEach { pieData ->
                                     if (pieData.name != "데이터 없음") {
-                                        LegendItem(pieData.name, "${String.format("%.1f", pieData.value)}%", pieData.color)
+                                        LegendItem(
+                                            title = pieData.name, 
+                                            percentage = "${String.format("%.1f", pieData.value)}%", 
+                                            color = pieData.color,
+                                            onClick = { onCategoryClick(pieData.name) }
+                                        )
                                     }
                                 }
                             }
@@ -242,9 +250,9 @@ fun StatisticsScreen() {
 }
 
 @Composable
-fun LegendItem(title: String, percentage: String, color: Color) {
+fun LegendItem(title: String, percentage: String, color: Color, onClick: () -> Unit = {}) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { onClick() },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {

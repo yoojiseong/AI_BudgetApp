@@ -13,6 +13,9 @@ interface ExpenseDao {
     @Query("SELECT * FROM expenses ORDER BY date DESC")
     fun getAllExpenses(): Flow<List<ExpenseEntity>>
 
+    @Query("SELECT * FROM expenses WHERE category = :category ORDER BY date DESC")
+    fun getExpensesByCategory(category: String): Flow<List<ExpenseEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertExpense(expense: ExpenseEntity)
 

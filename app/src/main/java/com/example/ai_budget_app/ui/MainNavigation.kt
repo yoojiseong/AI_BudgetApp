@@ -42,6 +42,9 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object Map : Screen("map/{storeName}", "지도", null) {
         fun createRoute(storeName: String) = "map/$storeName"
     }
+    object CategoryDetail : Screen("category_detail/{categoryName}", "카테고리 상세", null) {
+        fun createRoute(categoryName: String) = "category_detail/$categoryName"
+    }
 }
 
 val bottomNavItems = listOf(
@@ -113,7 +116,11 @@ fun MainAppScaffold() {
                 HistoryScreen()
             }
             composable(Screen.Statistics.route) {
-                StatisticsScreen()
+                StatisticsScreen(
+                    onCategoryClick = { categoryName ->
+                        navController.navigate(Screen.CategoryDetail.createRoute(categoryName))
+                    }
+                )
             }
             
             // Other screens
@@ -149,6 +156,13 @@ fun MainAppScaffold() {
                 val storeName = backStackEntry.arguments?.getString("storeName") ?: "상호명"
                 ConsumptionMapScreen(
                     storeName = storeName,
+                    onBackClick = { navController.navigateUp() }
+                )
+            }
+            composable(Screen.CategoryDetail.route) { backStackEntry ->
+                val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
+                com.example.ai_budget_app.ui.statistics.CategoryDetailScreen(
+                    categoryName = categoryName,
                     onBackClick = { navController.navigateUp() }
                 )
             }

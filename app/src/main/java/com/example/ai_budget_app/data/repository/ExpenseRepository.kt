@@ -8,6 +8,10 @@ class ExpenseRepository(private val expenseDao: ExpenseDao) {
 
     val allExpenses: Flow<List<ExpenseEntity>> = expenseDao.getAllExpenses()
 
+    fun getExpensesByCategory(category: String): Flow<List<ExpenseEntity>> {
+        return expenseDao.getExpensesByCategory(category)
+    }
+
     suspend fun insertExpense(expense: ExpenseEntity) {
         kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
             expenseDao.insertExpense(expense)
