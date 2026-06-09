@@ -15,17 +15,37 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ai_budget_app.data.local.AppDatabase
+import com.example.ai_budget_app.data.repository.ExpenseRepository
 import com.example.ai_budget_app.ui.home.RecentItem
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen() {
+    val context = LocalContext.current
+    val repository = remember { ExpenseRepository(AppDatabase.getDatabase(context).expenseDao()) }
+    val viewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(repository))
+    
+    val expenses by viewModel.expenses.collectAsState()
+    
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("전체") }
-    val categories = listOf("전체", "식료품", "카페/간식", "편의점")
+    val categories = listOf("전체", "식료품", "카페/간식", "편의점", "쇼핑", "기타")
+
+    // Filter and group
+    val filteredExpenses = expenses.filter {
+        (selectedCategory == "전체" || it.category == selectedCategory) &&
+        (searchQuery.isBlank() || it.storeName.contains(searchQuery, ignoreCase = true) || it.items.any { item -> item.itemName.contains(searchQuery, ignoreCase = true) })
+    }
+    
+    val groupedExpenses = filteredExpenses.groupBy { it.date }
 
     Scaffold(
         topBar = {
@@ -88,57 +108,40 @@ fun HistoryScreen() {
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
             ) {
-                item {
-                    Text(
-                        "5월 18일 (월)",
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            RecentItem("이마트", "식료품", "18,600원", true)
+                if (groupedExpenses.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(vertical = 32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("지출 내역이 없습니다.", color = Color.Gray)
                         }
                     }
-                }
-
-                item {
-                    Text(
-                        "5월 17일 (일)",
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            RecentItem("스타벅스", "카페/간식", "9,500원", false)
-                            RecentItem("올리브영", "쇼핑", "22,000원", false)
-                        }
-                    }
-                }
-                
-                item {
-                    Text(
-                        "5월 16일 (토)",
-                        fontWeight = FontWeight.Bold,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            RecentItem("GS25", "편의점", "2,700원", false)
+                } else {
+                    groupedExpenses.forEach { (date, dailyExpenses) ->
+                        item {
+                            Text(
+                                text = date,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.Gray,
+                                modifier = Modifier.padding(vertical = 8.dp)
+                            )
+                            Card(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                                colors = CardDefaults.cardColors(containerColor = Color.White),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    dailyExpenses.forEach { expense ->
+                                        RecentItem(
+                                            store = expense.storeName,
+                                            info = expense.category,
+                                            price = "${NumberFormat.getNumberInstance(Locale.KOREA).format(expense.totalAmount)}원",
+                                            isHigh = false // TODO: logic for warning
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
