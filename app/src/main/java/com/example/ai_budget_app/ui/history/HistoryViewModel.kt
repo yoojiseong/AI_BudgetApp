@@ -8,6 +8,8 @@ import com.example.ai_budget_app.data.repository.ExpenseRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class HistoryViewModel(private val repository: ExpenseRepository) : ViewModel() {
 
@@ -17,6 +19,20 @@ class HistoryViewModel(private val repository: ExpenseRepository) : ViewModel() 
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    fun populateDummyDataIfNeeded() {
+        viewModelScope.launch {
+            val currentExpenses = repository.allExpenses.first()
+            if (currentExpenses.isEmpty()) {
+                val dummy1 = ExpenseEntity(storeName = "이마트", date = "2026-05-18", category = "식료품", paymentMethod = "신용카드", items = emptyList(), totalAmount = 18600)
+                val dummy2 = ExpenseEntity(storeName = "스타벅스", date = "2026-05-17", category = "카페/간식", paymentMethod = "신용카드", items = emptyList(), totalAmount = 9500)
+                val dummy3 = ExpenseEntity(storeName = "GS25", date = "2026-05-16", category = "편의점", paymentMethod = "신용카드", items = emptyList(), totalAmount = 2700)
+                repository.insertExpense(dummy1)
+                repository.insertExpense(dummy2)
+                repository.insertExpense(dummy3)
+            }
+        }
+    }
 }
 
 class HistoryViewModelFactory(private val repository: ExpenseRepository) : ViewModelProvider.Factory {

@@ -11,7 +11,7 @@ import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -19,15 +19,68 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ai_budget_app.data.local.AppDatabase
+import com.example.ai_budget_app.data.repository.ExpenseRepository
+import com.example.ai_budget_app.ui.history.HistoryViewModel
+import com.example.ai_budget_app.ui.history.HistoryViewModelFactory
 import com.example.ai_budget_app.ui.home.CustomPieChart
 import com.example.ai_budget_app.ui.home.PieChartData
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StatisticsScreen() {
+    val context = LocalContext.current
+    val repository = remember { ExpenseRepository(AppDatabase.getDatabase(context).expenseDao()) }
+    val viewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(repository))
+    
+    val expenses by viewModel.expenses.collectAsState()
+    
+    val totalAmount = expenses.sumOf { it.totalAmount }
+    val formatter = NumberFormat.getNumberInstance(Locale.KOREA)
+    
+    val uniqueDays = expenses.map { it.date }.distinct().size
+    val dailyAvg = if (uniqueDays > 0) totalAmount / uniqueDays else 0
+    
+    // Calculate category percentages
+    val categoryColors = listOf(Color(0xFF4285F4), Color(0xFFAB47BC), Color(0xFF0F9D58), Color(0xFFF4B400), Color(0xFF9C27B0))
+    val categoryTotals = expenses.groupBy { it.category }
+        .mapValues { entry -> entry.value.sumOf { it.totalAmount } }
+        .toList()
+        .sortedByDescending { it.second }
+    
+    val pieChartDataList = if (totalAmount > 0) {
+        categoryTotals.mapIndexed { index, pair ->
+            val percentage = (pair.second.toFloat() / totalAmount) * 100f
+            PieChartData(pair.first, percentage, categoryColors[index % categoryColors.size])
+        }
+    } else {
+        listOf(PieChartData("데이터 없음", 100f, Color.LightGray))
+    }
+
+    // Daily Trend Bar Chart Data
+    val dailyTotals = expenses.groupBy { it.date }
+        .mapValues { entry -> entry.value.sumOf { it.totalAmount }.toFloat() }
+        .toList()
+        .sortedBy { it.first } // sort by date ascending
+
+    // take last 5 days
+    val recentDays = dailyTotals.takeLast(5)
+    val barChartData = if (recentDays.isNotEmpty()) {
+        recentDays.map { (date, amount) ->
+            val dayPart = date.split("-").lastOrNull() ?: date
+            BarChartData(dayPart, amount)
+        }
+    } else {
+        listOf(BarChartData("없음", 0f))
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -78,9 +131,9 @@ fun StatisticsScreen() {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("총 지출", color = Color.Gray, fontSize = 12.sp)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("182,500원", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text("${formatter.format(totalAmount)}원", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("전월 대비 12% 감소 ↓", color = Color(0xFF1976D2), fontSize = 10.sp)
+                            Text("전월 대비 -% 감소 ↓", color = Color(0xFF1976D2), fontSize = 10.sp)
                         }
                     }
                     
@@ -92,7 +145,7 @@ fun StatisticsScreen() {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text("일평균 지출", color = Color.Gray, fontSize = 12.sp)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text("10,138원", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                            Text("${formatter.format(dailyAvg)}원", fontWeight = FontWeight.Bold, fontSize = 18.sp)
                             Spacer(modifier = Modifier.height(4.dp))
                             Text("목표 예산 순항 중", color = Color(0xFF0F9D58), fontSize = 10.sp)
                         }
@@ -113,19 +166,15 @@ fun StatisticsScreen() {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                                 CustomPieChart(
-                                    data = listOf(
-                                        PieChartData("식료품", 60f, Color(0xFF4285F4)),
-                                        PieChartData("쇼핑", 20f, Color(0xFFAB47BC)),
-                                        PieChartData("카페/간식", 15f, Color(0xFF0F9D58)),
-                                        PieChartData("교통", 5f, Color(0xFFF4B400))
-                                    )
+                                    data = pieChartDataList
                                 )
                             }
                             Column(modifier = Modifier.weight(1f)) {
-                                LegendItem("식료품", "60%", Color(0xFF4285F4))
-                                LegendItem("쇼핑", "20%", Color(0xFFAB47BC))
-                                LegendItem("카페/간식", "15%", Color(0xFF0F9D58))
-                                LegendItem("교통", "5%", Color(0xFFF4B400))
+                                pieChartDataList.forEach { pieData ->
+                                    if (pieData.name != "데이터 없음") {
+                                        LegendItem(pieData.name, "${String.format("%.1f", pieData.value)}%", pieData.color)
+                                    }
+                                }
                             }
                         }
                     }
@@ -145,14 +194,19 @@ fun StatisticsScreen() {
                         
                         Box(modifier = Modifier.fillMaxWidth().height(150.dp)) {
                             CustomBarChart(
-                                data = listOf(
-                                    BarChartData("14", 5000f),
-                                    BarChartData("15", 12000f),
-                                    BarChartData("16", 2700f),
-                                    BarChartData("17", 31500f),
-                                    BarChartData("18", 18600f)
-                                )
+                                data = barChartData
                             )
+                        }
+                        
+                        Spacer(modifier = Modifier.height(8.dp))
+                        // Draw labels roughly under the bars
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            barChartData.forEach { data ->
+                                Text(data.label, fontSize = 12.sp, color = Color.Gray)
+                            }
                         }
                     }
                 }
@@ -172,8 +226,9 @@ fun StatisticsScreen() {
                             Text("이번 달 소비 인사이트", fontWeight = FontWeight.Bold, color = Color(0xFF673AB7))
                         }
                         Spacer(modifier = Modifier.height(8.dp))
+                        val topCategory = categoryTotals.firstOrNull()?.first ?: "지출"
                         Text(
-                            "지난 달보다 식료품 지출이 줄었지만, 카페/간식 지출이 조금씩 늘고 있어요. 커피값을 줄이면 더 많은 저축이 가능할 것 같아요!",
+                            "이번 달은 '$topCategory' 카테고리 지출이 가장 많네요! 조금 더 예산을 관리해 보는 건 어떨까요?",
                             fontSize = 14.sp,
                             color = Color.DarkGray
                         )
@@ -206,27 +261,25 @@ data class BarChartData(val label: String, val value: Float)
 
 @Composable
 fun CustomBarChart(data: List<BarChartData>) {
-    val maxValue = data.maxOfOrNull { it.value } ?: 1f
+    val maxValue = data.maxOfOrNull { it.value }?.takeIf { it > 0 } ?: 1f
     
     Canvas(modifier = Modifier.fillMaxSize()) {
         val barWidth = 30.dp.toPx()
         val spacing = (size.width - (barWidth * data.size)) / (data.size + 1)
         
         data.forEachIndexed { index, barData ->
-            val barHeight = (barData.value / maxValue) * (size.height - 30.dp.toPx()) // Leave space for label
+            val barHeight = (barData.value / maxValue) * size.height
             val x = spacing + index * (barWidth + spacing)
-            val y = size.height - 30.dp.toPx() - barHeight
+            val y = size.height - barHeight
             
-            drawRoundRect(
-                color = Color(0xFF2979FF),
-                topLeft = Offset(x, y),
-                size = Size(barWidth, barHeight),
-                cornerRadius = CornerRadius(4.dp.toPx())
-            )
-            
-            // X-Axis labels could be drawn using TextMeasurer in modern compose, 
-            // but for simplicity in this canvas we skip native text drawing and let it be implied or 
-            // you can add Compose text overlays
+            if (barHeight > 0) {
+                drawRoundRect(
+                    color = Color(0xFF2979FF),
+                    topLeft = Offset(x, y),
+                    size = Size(barWidth, barHeight),
+                    cornerRadius = CornerRadius(4.dp.toPx())
+                )
+            }
         }
     }
 }

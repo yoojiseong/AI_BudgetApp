@@ -12,7 +12,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,15 +21,65 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.ai_budget_app.data.local.AppDatabase
+import com.example.ai_budget_app.data.repository.ExpenseRepository
+import com.example.ai_budget_app.ui.history.HistoryViewModel
+import com.example.ai_budget_app.ui.history.HistoryViewModelFactory
+import java.text.NumberFormat
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainHomeScreen(
     onFabClick: () -> Unit
 ) {
+    val context = LocalContext.current
+    val repository = remember { ExpenseRepository(AppDatabase.getDatabase(context).expenseDao()) }
+    val viewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(repository))
+    
+    val expenses by viewModel.expenses.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.populateDummyDataIfNeeded()
+    }
+
+    val totalAmount = expenses.sumOf { it.totalAmount }
+    val formatter = NumberFormat.getNumberInstance(Locale.KOREA)
+    
+    // Calculate category percentages
+    val categoryColors = listOf(Color(0xFF4285F4), Color(0xFF0F9D58), Color(0xFFF4B400), Color(0xFFDB4437), Color(0xFF9C27B0))
+    val categoryTotals = expenses.groupBy { it.category }
+        .mapValues { entry -> entry.value.sumOf { it.totalAmount } }
+        .toList()
+        .sortedByDescending { it.second }
+    
+    val pieChartDataList = if (totalAmount > 0) {
+        categoryTotals.mapIndexed { index, pair ->
+            val percentage = (pair.second.toFloat() / totalAmount) * 100f
+            PieChartData(pair.first, percentage, categoryColors[index % categoryColors.size])
+        }
+    } else {
+        listOf(PieChartData("데이터 없음", 100f, Color.LightGray))
+    }
+
+    val allItems = expenses.flatMap { exp -> exp.items.map { it to exp.storeName } }
+    val itemAverages = allItems.groupBy { it.first.itemName }
+        .mapValues { entry ->
+            val sum = entry.value.sumOf { it.first.price }
+            val count = entry.value.size
+            if (count > 0) sum / count else 0
+        }
+    
+    val warnings = allItems.filter { (item, _) ->
+        val avg = itemAverages[item.itemName] ?: 0
+        avg > 0 && item.price > avg * 1.1
+    }.take(3)
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -74,14 +124,14 @@ fun MainHomeScreen(
                     ) {
                         Text("이번 달 총 지출", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("30,800원", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                        Text("${formatter.format(totalAmount)}원", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
                         Spacer(modifier = Modifier.height(16.dp))
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("3건의 지출", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
-                            Text("5월", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                            Text("${expenses.size}건의 지출", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
+                            Text("5월", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp) // TODO: Dynamic month
                         }
                     }
                 }
@@ -104,9 +154,16 @@ fun MainHomeScreen(
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        WarningItem("사과 (이마트)", "평균보다 19% 높음", "+1,400원")
-                        WarningItem("우유 (이마트)", "평균보다 14% 높음", "+400원")
-                        WarningItem("계란 (이마트)", "평균보다 8% 높음", "+500원")
+                        if (warnings.isEmpty()) {
+                            Text("현재 데이터에서는 시세보다 비싸게 구매한 내역이 없습니다.", fontSize = 12.sp, color = Color.Gray)
+                        } else {
+                            warnings.forEach { (item, store) ->
+                                val avg = itemAverages[item.itemName] ?: 0
+                                val diff = item.price - avg
+                                val percent = ((diff.toFloat() / avg) * 100).toInt()
+                                WarningItem("${item.itemName} ($store)", "평균보다 $percent% 높음", "+${formatter.format(diff)}원")
+                            }
+                        }
                     }
                 }
             }
@@ -131,12 +188,25 @@ fun MainHomeScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             CustomPieChart(
-                                data = listOf(
-                                    PieChartData("식료품", 60f, Color(0xFF4285F4)),
-                                    PieChartData("카페/간식", 31f, Color(0xFF0F9D58)),
-                                    PieChartData("편의점", 9f, Color(0xFFF4B400))
-                                )
+                                data = pieChartDataList
                             )
+                        }
+                        
+                        // Category Legend
+                        Spacer(modifier = Modifier.height(16.dp))
+                        pieChartDataList.forEach { pieData ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(modifier = Modifier.size(12.dp).background(pieData.color, CircleShape))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(pieData.name, fontSize = 14.sp)
+                                }
+                                Text("${String.format("%.1f", pieData.value)}%", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                            }
                         }
                     }
                 }
@@ -162,9 +232,19 @@ fun MainHomeScreen(
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        RecentItem("이마트", "식료품 · 2026. 5. 18.", "18,600원", true)
-                        RecentItem("스타벅스", "카페/간식 · 2026. 5. 17.", "9,500원", false)
-                        RecentItem("GS25", "편의점 · 2026. 5. 16.", "2,700원", false)
+                        val recentItems = expenses.take(5)
+                        if (recentItems.isEmpty()) {
+                            Text("지출 내역이 없습니다.", color = Color.Gray, modifier = Modifier.padding(vertical = 8.dp))
+                        } else {
+                            recentItems.forEach { expense ->
+                                RecentItem(
+                                    store = expense.storeName, 
+                                    info = "${expense.category} · ${expense.date}", 
+                                    price = "${formatter.format(expense.totalAmount)}원", 
+                                    isHigh = false // TODO logic
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -221,6 +301,18 @@ fun CustomPieChart(data: List<PieChartData>) {
     var startAngle = -90f
 
     Canvas(modifier = Modifier.size(150.dp)) {
+        if (total == 0f) {
+            // Draw gray circle if no data
+            drawArc(
+                color = Color.LightGray,
+                startAngle = 0f,
+                sweepAngle = 360f,
+                useCenter = true,
+                size = Size(size.width, size.height)
+            )
+            return@Canvas
+        }
+
         data.forEach { pieData ->
             val sweepAngle = (pieData.value / total) * 360f
             drawArc(
@@ -232,8 +324,5 @@ fun CustomPieChart(data: List<PieChartData>) {
             )
             startAngle += sweepAngle
         }
-        
-        // Inner circle to make it look like a donut if desired, 
-        // but PDF shows a full pie chart. We keep it as pie chart.
     }
 }
