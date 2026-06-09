@@ -45,8 +45,13 @@ fun StatisticsScreen(
     val viewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(repository))
     
     val allExpenses by viewModel.expenses.collectAsState()
+    val insightFeedback by viewModel.insightFeedback.collectAsState()
     
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
+    
+    LaunchedEffect(currentMonth) {
+        viewModel.resetInsightFeedback()
+    }
     
     val expenses = allExpenses.filter {
         it.date.startsWith(currentMonth.toString())
@@ -241,12 +246,42 @@ fun StatisticsScreen(
                             Text("이번 달 소비 인사이트", fontWeight = FontWeight.Bold, color = Color(0xFF673AB7))
                         }
                         Spacer(modifier = Modifier.height(8.dp))
-                        val topCategory = categoryTotals.firstOrNull()?.first ?: "지출"
-                        Text(
-                            "이번 달은 '$topCategory' 카테고리 지출이 가장 많네요! 조금 더 예산을 관리해 보는 건 어떨까요?",
-                            fontSize = 14.sp,
-                            color = Color.DarkGray
-                        )
+                        when (insightFeedback) {
+                            null -> {
+                                Text(
+                                    "AI에게 맞춤형 소비 진단을 받아보세요!",
+                                    fontSize = 14.sp,
+                                    color = Color.DarkGray
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = { viewModel.generateInsightFeedback(expenses) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF673AB7)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("AI 소비 진단 받기")
+                                }
+                            }
+                            "Loading..." -> {
+                                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(color = Color(0xFF673AB7))
+                                }
+                            }
+                            else -> {
+                                Text(
+                                    insightFeedback ?: "",
+                                    fontSize = 14.sp,
+                                    color = Color.DarkGray
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                TextButton(
+                                    onClick = { viewModel.generateInsightFeedback(expenses) },
+                                    modifier = Modifier.align(Alignment.End)
+                                ) {
+                                    Text("다시 진단받기", color = Color(0xFF673AB7))
+                                }
+                            }
+                        }
                     }
                 }
             }

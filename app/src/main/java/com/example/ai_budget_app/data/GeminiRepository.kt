@@ -70,4 +70,33 @@ class GeminiRepository {
             )
         )
     }
+
+    suspend fun generateMonthlyFeedback(categoryTotals: Map<String, Int>, overspentItems: List<String>): String? = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank() || apiKey == "YOUR_API_KEY") {
+            delay(1500)
+            return@withContext "이번 달은 전반적으로 예산 관리가 잘 되고 있습니다. 다만, 일부 과소비 항목이 발견되었으니 다음 달에는 조금 더 신경 써보는 건 어떨까요?"
+        }
+
+        try {
+            val generativeModel = GenerativeModel(
+                modelName = "gemini-1.5-flash",
+                apiKey = apiKey
+            )
+
+            val prompt = """
+                다음은 사용자의 이번 달 지출 내역 요약입니다:
+                - 카테고리별 총 지출: $categoryTotals
+                - 평균 시세보다 비싸게 구매한 품목(과소비): $overspentItems
+                
+                이 데이터를 바탕으로 사용자에게 예산 관리를 돕는 2~3문장의 따뜻하고 유용한 재무 조언을 한국어로 해줘.
+                마크다운 없이, 인사말 없이 바로 조언 본문만 출력해.
+            """.trimIndent()
+
+            val response = generativeModel.generateContent(prompt)
+            response.text?.trim() ?: "AI가 안전성 문제로 응답을 거부했거나 빈 텍스트를 반환했습니다."
+        } catch (e: Exception) {
+            Log.e("GeminiRepository", "Error generating feedback", e)
+            "API 통신 오류: ${e.localizedMessage}\n네트워크 상태나 API 키 설정을 확인해주세요."
+        }
+    }
 }

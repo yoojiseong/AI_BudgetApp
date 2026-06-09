@@ -8,10 +8,18 @@ import com.example.ai_budget_app.data.repository.ExpenseRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.example.ai_budget_app.data.GeminiRepository
 
 class HistoryViewModel(private val repository: ExpenseRepository) : ViewModel() {
+
+    private val geminiRepository = GeminiRepository()
+
+    private val _insightFeedback = MutableStateFlow<String?>(null)
+    val insightFeedback: StateFlow<String?> = _insightFeedback.asStateFlow()
 
     val expenses: StateFlow<List<ExpenseEntity>> = repository.allExpenses
         .stateIn(
@@ -32,6 +40,35 @@ class HistoryViewModel(private val repository: ExpenseRepository) : ViewModel() 
                 repository.insertExpense(dummy3)
             }
         }
+    }
+
+    fun generateInsightFeedback(currentMonthExpenses: List<ExpenseEntity>) {
+        viewModelScope.launch {
+            _insightFeedback.value = "Loading..."
+            
+            val categoryTotals = currentMonthExpenses.groupBy { it.category }
+                .mapValues { entry -> entry.value.sumOf { it.totalAmount } }
+            
+            val allItems = currentMonthExpenses.flatMap { exp -> exp.items }
+            val itemAverages = allItems.groupBy { it.itemName }
+                .mapValues { entry -> 
+                    val sum = entry.value.sumOf { it.price }
+                    val count = entry.value.size
+                    if (count > 0) sum / count else 0
+                }
+            
+            val overspentItems = allItems.filter { item ->
+                val avg = itemAverages[item.itemName] ?: 0
+                avg > 0 && item.price > avg * 1.1
+            }.map { it.itemName }.distinct()
+
+            val feedback = geminiRepository.generateMonthlyFeedback(categoryTotals, overspentItems)
+            _insightFeedback.value = feedback ?: "AI 분석에 실패했습니다. 나중에 다시 시도해주세요."
+        }
+    }
+
+    fun resetInsightFeedback() {
+        _insightFeedback.value = null
     }
 }
 
