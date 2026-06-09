@@ -32,6 +32,7 @@ import com.example.ai_budget_app.ui.history.HistoryViewModelFactory
 import com.example.ai_budget_app.ui.home.CustomPieChart
 import com.example.ai_budget_app.ui.home.PieChartData
 import java.text.NumberFormat
+import java.time.YearMonth
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,7 +44,13 @@ fun StatisticsScreen(
     val repository = remember { ExpenseRepository(AppDatabase.getDatabase(context).expenseDao()) }
     val viewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(repository))
     
-    val expenses by viewModel.expenses.collectAsState()
+    val allExpenses by viewModel.expenses.collectAsState()
+    
+    var currentMonth by remember { mutableStateOf(YearMonth.now()) }
+    
+    val expenses = allExpenses.filter {
+        it.date.startsWith(currentMonth.toString())
+    }
     
     val totalAmount = expenses.sumOf { it.totalAmount }
     val formatter = NumberFormat.getNumberInstance(Locale.KOREA)
@@ -108,11 +115,11 @@ fun StatisticsScreen(
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = { /*TODO*/ }) {
+                    IconButton(onClick = { currentMonth = currentMonth.minusMonths(1) }) {
                         Icon(Icons.Default.ChevronLeft, contentDescription = "이전 달")
                     }
-                    Text("2026년 5월", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp))
-                    IconButton(onClick = { /*TODO*/ }) {
+                    Text("${currentMonth.year}년 ${currentMonth.monthValue}월", fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 16.dp))
+                    IconButton(onClick = { currentMonth = currentMonth.plusMonths(1) }) {
                         Icon(Icons.Default.ChevronRight, contentDescription = "다음 달")
                     }
                 }
@@ -270,6 +277,7 @@ data class BarChartData(val label: String, val value: Float)
 @Composable
 fun CustomBarChart(data: List<BarChartData>) {
     val maxValue = data.maxOfOrNull { it.value }?.takeIf { it > 0 } ?: 1f
+    val barColors = listOf(Color(0xFF4285F4), Color(0xFFAB47BC), Color(0xFF0F9D58), Color(0xFFF4B400), Color(0xFF9C27B0), Color(0xFF00BCD4))
     
     Canvas(modifier = Modifier.fillMaxSize()) {
         val barWidth = 30.dp.toPx()
@@ -282,7 +290,7 @@ fun CustomBarChart(data: List<BarChartData>) {
             
             if (barHeight > 0) {
                 drawRoundRect(
-                    color = Color(0xFF2979FF),
+                    color = barColors[index % barColors.size],
                     topLeft = Offset(x, y),
                     size = Size(barWidth, barHeight),
                     cornerRadius = CornerRadius(4.dp.toPx())

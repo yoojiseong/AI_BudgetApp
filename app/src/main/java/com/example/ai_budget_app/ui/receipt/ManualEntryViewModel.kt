@@ -1,32 +1,32 @@
 package com.example.ai_budget_app.ui.receipt
 
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.ai_budget_app.data.ReceiptItem
 import com.example.ai_budget_app.data.local.ExpenseEntity
 import com.example.ai_budget_app.data.repository.ExpenseRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 
 class ManualEntryViewModel(private val repository: ExpenseRepository) : ViewModel() {
 
-    private val _storeName = MutableStateFlow("")
-    val storeName: StateFlow<String> = _storeName.asStateFlow()
+    private val _storeName = mutableStateOf("")
+    val storeName: State<String> = _storeName
 
-    private val _date = MutableStateFlow("2026-05-18") // Default or current date
-    val date: StateFlow<String> = _date.asStateFlow()
+    private val _date = mutableStateOf(LocalDate.now().toString()) // Default or current date
+    val date: State<String> = _date
 
-    private val _category = MutableStateFlow("식료품")
-    val category: StateFlow<String> = _category.asStateFlow()
+    private val _category = mutableStateOf("식료품")
+    val category: State<String> = _category
 
-    private val _paymentMethod = MutableStateFlow("신용카드")
-    val paymentMethod: StateFlow<String> = _paymentMethod.asStateFlow()
+    private val _paymentMethod = mutableStateOf("신용카드")
+    val paymentMethod: State<String> = _paymentMethod
 
-    private val _items = MutableStateFlow<List<ReceiptItem>>(emptyList())
-    val items: StateFlow<List<ReceiptItem>> = _items.asStateFlow()
+    private val _items = mutableStateOf<List<ReceiptItem>>(emptyList())
+    val items: State<List<ReceiptItem>> = _items
 
     fun updateStoreName(name: String) { _storeName.value = name }
     fun updateDate(newDate: String) { _date.value = newDate }

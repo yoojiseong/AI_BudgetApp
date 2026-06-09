@@ -31,6 +31,7 @@ import com.example.ai_budget_app.data.repository.ExpenseRepository
 import com.example.ai_budget_app.ui.history.HistoryViewModel
 import com.example.ai_budget_app.ui.history.HistoryViewModelFactory
 import java.text.NumberFormat
+import java.time.YearMonth
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,11 +43,14 @@ fun MainHomeScreen(
     val repository = remember { ExpenseRepository(AppDatabase.getDatabase(context).expenseDao()) }
     val viewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(repository))
     
-    val expenses by viewModel.expenses.collectAsState()
+    val allExpenses by viewModel.expenses.collectAsState()
 
     LaunchedEffect(Unit) {
         viewModel.populateDummyDataIfNeeded()
     }
+    
+    val currentMonth = remember { YearMonth.now() }
+    val expenses = allExpenses.filter { it.date.startsWith(currentMonth.toString()) }
 
     val totalAmount = expenses.sumOf { it.totalAmount }
     val formatter = NumberFormat.getNumberInstance(Locale.KOREA)
@@ -131,7 +135,7 @@ fun MainHomeScreen(
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text("${expenses.size}건의 지출", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
-                            Text("5월", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp) // TODO: Dynamic month
+                            Text("${currentMonth.monthValue}월", color = Color.White.copy(alpha = 0.8f), fontSize = 14.sp)
                         }
                     }
                 }
@@ -298,9 +302,9 @@ data class PieChartData(val name: String, val value: Float, val color: Color)
 @Composable
 fun CustomPieChart(data: List<PieChartData>) {
     val total = data.sumOf { it.value.toDouble() }.toFloat()
-    var startAngle = -90f
 
     Canvas(modifier = Modifier.size(150.dp)) {
+        var startAngle = -90f
         if (total == 0f) {
             // Draw gray circle if no data
             drawArc(

@@ -35,11 +35,11 @@ fun ManualEntryScreen(
     val repository = remember { ExpenseRepository(AppDatabase.getDatabase(context).expenseDao()) }
     val viewModel: ManualEntryViewModel = viewModel(factory = ManualEntryViewModelFactory(repository))
 
-    val storeName by viewModel.storeName.collectAsState()
-    val date by viewModel.date.collectAsState()
-    val category by viewModel.category.collectAsState()
-    val paymentMethod by viewModel.paymentMethod.collectAsState()
-    val items by viewModel.items.collectAsState()
+    val storeName by viewModel.storeName
+    val date by viewModel.date
+    val category by viewModel.category
+    val paymentMethod by viewModel.paymentMethod
+    val items by viewModel.items
 
     Scaffold(
         topBar = {
