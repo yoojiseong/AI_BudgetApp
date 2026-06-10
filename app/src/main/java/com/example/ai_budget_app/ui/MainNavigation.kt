@@ -7,6 +7,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Receipt
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -23,6 +24,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.ai_budget_app.ui.history.HistoryScreen
 import com.example.ai_budget_app.ui.home.MainHomeScreen
 import com.example.ai_budget_app.ui.map.ConsumptionMapScreen
+import com.example.ai_budget_app.ui.map.MonthlyLocationMapScreen
 import com.example.ai_budget_app.ui.receipt.CameraPreviewScreen
 import com.example.ai_budget_app.ui.receipt.ManualEntryScreen
 import com.example.ai_budget_app.ui.receipt.ReceiptCaptureScreen
@@ -34,6 +36,7 @@ sealed class Screen(val route: String, val title: String, val icon: ImageVector?
     object Capture : Screen("capture", "촬영", Icons.Default.CameraAlt)
     object History : Screen("history", "내역", Icons.Default.Receipt)
     object Statistics : Screen("statistics", "통계", Icons.Default.BarChart)
+    object LocationMap : Screen("location_map", "위치", Icons.Default.Place)
     
     // Hidden from bottom bar
     object ManualEntry : Screen("manual_entry", "수동입력", null)
@@ -51,7 +54,8 @@ val bottomNavItems = listOf(
     Screen.Home,
     Screen.Capture,
     Screen.History,
-    Screen.Statistics
+    Screen.Statistics,
+    Screen.LocationMap
 )
 
 @Composable
@@ -109,7 +113,8 @@ fun MainAppScaffold() {
             composable(Screen.Capture.route) {
                 ReceiptCaptureScreen(
                     onBackClick = { navController.navigateUp() },
-                    onCameraClick = { navController.navigate(Screen.CameraPreview.route) }
+                    onCameraClick = { navController.navigate(Screen.CameraPreview.route) },
+                    onImageReady = { navController.navigate(Screen.ReceiptResult.route) }
                 )
             }
             composable(Screen.History.route) {
@@ -121,6 +126,9 @@ fun MainAppScaffold() {
                         navController.navigate(Screen.CategoryDetail.createRoute(categoryName))
                     }
                 )
+            }
+            composable(Screen.LocationMap.route) {
+                MonthlyLocationMapScreen()
             }
             
             // Other screens
@@ -134,18 +142,16 @@ fun MainAppScaffold() {
                 CameraPreviewScreen(
                     onBackClick = { navController.navigateUp() },
                     onImageCaptured = { bytes ->
-                        // Navigate to result screen. Since we can't easily pass large ByteArray in Navigation route,
-                        // we'd typically save it to a repository or ViewModel.
-                        // For UI demonstration, we'll just navigate.
+                        ImageHolder.imageBytes = bytes
                         navController.navigate(Screen.ReceiptResult.route)
                     }
                 )
             }
             composable(Screen.ReceiptResult.route) {
-                // Mock bytes for UI display
-                val mockBytes = ByteArray(0) 
+                // Use shared ImageHolder
+                val bytes = ImageHolder.imageBytes ?: ByteArray(0) 
                 ReceiptResultScreen(
-                    imageBytes = mockBytes,
+                    imageBytes = bytes,
                     onBackClick = { navController.navigateUp() },
                     onShowMapClick = { storeName ->
                         navController.navigate(Screen.Map.createRoute(storeName))
@@ -168,4 +174,8 @@ fun MainAppScaffold() {
             }
         }
     }
+}
+
+object ImageHolder {
+    var imageBytes: ByteArray? = null
 }

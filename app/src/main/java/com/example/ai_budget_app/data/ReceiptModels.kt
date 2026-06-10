@@ -6,6 +6,7 @@ data class ReceiptData(
     @SerializedName("storeName") val storeName: String,
     @SerializedName("date") val date: String,
     @SerializedName("paymentMethod") val paymentMethod: String,
+    @SerializedName("category") val category: String,
     @SerializedName("items") val items: List<ReceiptItem>
 )
 

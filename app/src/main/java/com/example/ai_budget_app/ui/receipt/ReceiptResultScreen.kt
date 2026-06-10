@@ -33,6 +33,7 @@ fun ReceiptResultScreen(
     val geminiRepository = remember { GeminiRepository() }
     val publicDataRepository = remember { PublicDataRepository() }
     val coroutineScope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     var isLoading by remember { mutableStateOf(true) }
     var receiptData by remember { mutableStateOf<ReceiptData?>(null) }
@@ -59,6 +60,34 @@ fun ReceiptResultScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.White)
             )
+        },
+        floatingActionButton = {
+            if (receiptData != null && !isLoading) {
+                FloatingActionButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            val repository = com.example.ai_budget_app.data.repository.ExpenseRepository(
+                                com.example.ai_budget_app.data.local.AppDatabase.getDatabase(context).expenseDao()
+                            )
+                            val expense = com.example.ai_budget_app.data.local.ExpenseEntity(
+                                storeName = receiptData!!.storeName,
+                                date = receiptData!!.date,
+                                category = receiptData!!.category,
+                                paymentMethod = receiptData!!.paymentMethod,
+                                items = receiptData!!.items,
+                                totalAmount = receiptData!!.items.sumOf { it.price }
+                            )
+                            repository.insertExpense(expense)
+                            // 저장 후 뒤로 가기 (또는 내역으로 이동)
+                            onBackClick()
+                        }
+                    },
+                    containerColor = Color(0xFF1976D2),
+                    contentColor = Color.White
+                ) {
+                    Text("저장", modifier = Modifier.padding(horizontal = 16.dp), fontWeight = FontWeight.Bold)
+                }
+            }
         },
         containerColor = Color(0xFFF8F9FA)
     ) { paddingValues ->

@@ -1,3 +1,6 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -21,6 +24,14 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localProperties.load(FileInputStream(localPropertiesFile))
+        }
+        val publicDataKey = localProperties.getProperty("PUBLIC_DATA_API_KEY") ?: "YOUR_API_KEY"
+        buildConfigField("String", "PUBLIC_DATA_API_KEY", "\"$publicDataKey\"")
     }
 
     buildTypes {

@@ -79,10 +79,13 @@ fun MainHomeScreen(
             if (count > 0) sum / count else 0
         }
     
-    val warnings = allItems.filter { (item, _) ->
-        val avg = itemAverages[item.itemName] ?: 0
-        avg > 0 && item.price > avg * 1.1
-    }.take(3)
+    val comparisons by viewModel.publicDataComparisons.collectAsState()
+
+    LaunchedEffect(expenses) {
+        if (expenses.isNotEmpty() && comparisons == null) {
+            viewModel.fetchPublicDataComparisons(expenses)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -141,7 +144,7 @@ fun MainHomeScreen(
                 }
             }
 
-            // Warning Box
+            // Warning Box (공공데이터 생필품 가격 비교 연동)
             item {
                 Card(
                     modifier = Modifier
@@ -154,18 +157,21 @@ fun MainHomeScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFFF57C00))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("시세보다 비싸게 구매", fontWeight = FontWeight.Bold, color = Color(0xFFF57C00))
+                            Text("시세보다 비싸게 구매 (소비자원 연동)", fontWeight = FontWeight.Bold, color = Color(0xFFF57C00))
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                         
-                        if (warnings.isEmpty()) {
-                            Text("현재 데이터에서는 시세보다 비싸게 구매한 내역이 없습니다.", fontSize = 12.sp, color = Color.Gray)
+                        if (comparisons == null) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                CircularProgressIndicator(modifier = Modifier.size(16.dp), color = Color(0xFFF57C00), strokeWidth = 2.dp)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("공공데이터와 가격 비교 중...", fontSize = 12.sp, color = Color.Gray)
+                            }
+                        } else if (comparisons!!.isEmpty()) {
+                            Text("시세(공공데이터 기준)보다 비싸게 구매한 생필품이 없습니다. 알뜰 소비 👍", fontSize = 12.sp, color = Color.Gray)
                         } else {
-                            warnings.forEach { (item, store) ->
-                                val avg = itemAverages[item.itemName] ?: 0
-                                val diff = item.price - avg
-                                val percent = ((diff.toFloat() / avg) * 100).toInt()
-                                WarningItem("${item.itemName} ($store)", "평균보다 $percent% 높음", "+${formatter.format(diff)}원")
+                            comparisons!!.take(3).forEach { comp ->
+                                WarningItem(comp.item.itemName, "평균 시세보다 높음", "+${formatter.format(comp.difference)}원")
                             }
                         }
                     }

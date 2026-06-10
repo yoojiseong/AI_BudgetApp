@@ -32,7 +32,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun ReceiptCaptureScreen(
     onBackClick: () -> Unit,
-    onCameraClick: () -> Unit
+    onCameraClick: () -> Unit,
+    onImageReady: () -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -45,6 +46,8 @@ fun ReceiptCaptureScreen(
                 compressedImageBytes = bytes
                 if (bytes != null) {
                     Toast.makeText(context, "이미지가 선택되었고 압축되었습니다 (${bytes.size / 1024}KB)", Toast.LENGTH_SHORT).show()
+                    com.example.ai_budget_app.ui.ImageHolder.imageBytes = bytes
+                    onImageReady()
                 } else {
                     Toast.makeText(context, "이미지 압축 실패", Toast.LENGTH_SHORT).show()
                 }

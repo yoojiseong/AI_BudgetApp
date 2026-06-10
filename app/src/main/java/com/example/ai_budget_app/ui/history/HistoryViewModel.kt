@@ -17,9 +17,13 @@ import com.example.ai_budget_app.data.GeminiRepository
 class HistoryViewModel(private val repository: ExpenseRepository) : ViewModel() {
 
     private val geminiRepository = GeminiRepository()
+    private val publicDataRepository = com.example.ai_budget_app.data.PublicDataRepository()
 
     private val _insightFeedback = MutableStateFlow<String?>(null)
     val insightFeedback: StateFlow<String?> = _insightFeedback.asStateFlow()
+
+    private val _publicDataComparisons = MutableStateFlow<List<com.example.ai_budget_app.data.PriceComparison>?>(null)
+    val publicDataComparisons: StateFlow<List<com.example.ai_budget_app.data.PriceComparison>?> = _publicDataComparisons.asStateFlow()
 
     val expenses: StateFlow<List<ExpenseEntity>> = repository.allExpenses
         .stateIn(
@@ -69,6 +73,25 @@ class HistoryViewModel(private val repository: ExpenseRepository) : ViewModel() 
 
     fun resetInsightFeedback() {
         _insightFeedback.value = null
+        _publicDataComparisons.value = null
+    }
+
+    fun fetchPublicDataComparisons(currentMonthExpenses: List<ExpenseEntity>) {
+        viewModelScope.launch {
+            val allItems = currentMonthExpenses.flatMap { it.items }
+            // 중복 상품의 경우 가장 높은 가격 기준으로 한 번만 검사하도록 필터링
+            val distinctItems = allItems.groupBy { it.itemName }
+                .map { entry -> entry.value.maxByOrNull { it.price }!! }
+            
+            if (distinctItems.isNotEmpty()) {
+                val comparisons = publicDataRepository.getPriceComparisons(distinctItems)
+                // 평균가보다 비싸게 산 품목들만 필터링
+                val overspent = comparisons.filter { it.difference != null && it.difference > 0 }
+                _publicDataComparisons.value = overspent
+            } else {
+                _publicDataComparisons.value = emptyList()
+            }
+        }
     }
 }
 

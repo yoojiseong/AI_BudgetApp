@@ -26,7 +26,7 @@ class GeminiRepository {
         try {
             val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
             val generativeModel = GenerativeModel(
-                modelName = "gemini-1.5-flash",
+                modelName = "gemini-2.5-flash-lite",
                 apiKey = apiKey
             )
 
@@ -35,6 +35,7 @@ class GeminiRepository {
                 - storeName: 상호명 (문자열)
                 - date: 결제일시 (YYYY-MM-DD 형식)
                 - paymentMethod: 결제 수단 (예: 신용카드, 현금 등)
+                - category: 지출 카테고리 (예: 식비, 교통, 쇼핑, 문화/여가, 기타 등 가장 적절한 것 1개)
                 - items: 구매한 품목 리스트 (각 항목은 itemName(품목명), price(단가/금액)를 포함)
             """.trimIndent()
 
@@ -63,6 +64,7 @@ class GeminiRepository {
             storeName = "이마트",
             date = "2026-05-18",
             paymentMethod = "신용카드",
+            category = "식비",
             items = listOf(
                 ReceiptItem("사과", 8500),
                 ReceiptItem("우유", 3200),
@@ -79,7 +81,7 @@ class GeminiRepository {
 
         try {
             val generativeModel = GenerativeModel(
-                modelName = "gemini-1.5-flash",
+                modelName = "gemini-2.5-flash-lite",
                 apiKey = apiKey
             )
 

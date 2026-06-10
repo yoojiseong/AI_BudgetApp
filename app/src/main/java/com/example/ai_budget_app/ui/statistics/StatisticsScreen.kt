@@ -46,6 +46,7 @@ fun StatisticsScreen(
     
     val allExpenses by viewModel.expenses.collectAsState()
     val insightFeedback by viewModel.insightFeedback.collectAsState()
+    val comparisons by viewModel.publicDataComparisons.collectAsState()
     
     var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     
@@ -280,6 +281,67 @@ fun StatisticsScreen(
                                 ) {
                                     Text("다시 진단받기", color = Color(0xFF673AB7))
                                 }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // 호갱 경고 카드 (공공데이터 생필품 가격 비교)
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3E0)),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text("🚨", fontSize = 20.sp)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("이번 달 호갱 경고", fontWeight = FontWeight.Bold, color = Color(0xFFE65100))
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        
+                        if (comparisons == null) {
+                            Text(
+                                "공공데이터(한국소비자원) 평균 가격과 비교해 보세요.",
+                                fontSize = 14.sp,
+                                color = Color.DarkGray
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = { viewModel.fetchPublicDataComparisons(expenses) },
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE65100)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("생필품 가격 비교하기")
+                            }
+                        } else if (comparisons!!.isEmpty()) {
+                            Text(
+                                "이번 달은 평균 시세보다 비싸게 구매한 생필품이 없네요! 알뜰하게 잘 하셨어요 👍",
+                                fontSize = 14.sp,
+                                color = Color(0xFF2E7D32)
+                            )
+                        } else {
+                            comparisons!!.forEach { comp ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text(comp.item.itemName, fontWeight = FontWeight.Bold)
+                                    Text(
+                                        "평균보다 +${formatter.format(comp.difference)}원", 
+                                        color = Color.Red,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextButton(
+                                onClick = { viewModel.fetchPublicDataComparisons(expenses) },
+                                modifier = Modifier.align(Alignment.End)
+                            ) {
+                                Text("다시 비교하기", color = Color(0xFFE65100))
                             }
                         }
                     }
