@@ -107,7 +107,16 @@ fun MainAppScaffold() {
         ) {
             composable(Screen.Home.route) {
                 MainHomeScreen(
-                    onFabClick = { navController.navigate(Screen.ManualEntry.route) }
+                    onFabClick = { navController.navigate(Screen.ManualEntry.route) },
+                    onViewAllClick = {
+                        navController.navigate(Screen.History.route) {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
                 )
             }
             composable(Screen.Capture.route) {

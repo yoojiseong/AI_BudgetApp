@@ -32,8 +32,13 @@ class PublicDataRepository {
                 // 전체 데이터를 가져와서 필터링 (간단화: 실제로는 page 처리를 해야하지만 데모용으로 1페이지만 조회)
                 val response = api.getPriceInfo(page = 1, perPage = 1000, serviceKey = decodedKey)
                 
-                // item.itemName 이 응답 상품명에 포함되어있는지 검사
-                val matchedItems = response.data.filter { it.productName?.contains(item.itemName) == true }
+                // 상품명에서 괄호와 그 안의 내용(예: 용량), 공백을 제거하여 비교의 정확도를 높임
+                val cleanItemName = item.itemName.replace(Regex("\\(.*?\\)"), "").replace(" ", "")
+                val matchedItems = response.data.filter {
+                    val cleanProductName = it.productName?.replace(Regex("\\(.*?\\)"), "")?.replace(" ", "") ?: ""
+                    cleanProductName.isNotEmpty() && cleanItemName.isNotEmpty() && 
+                    (cleanProductName.contains(cleanItemName) || cleanItemName.contains(cleanProductName))
+                }
                 
                 if (matchedItems.isNotEmpty()) {
                     val prices = matchedItems.mapNotNull { it.price?.replace(",", "")?.toIntOrNull() }

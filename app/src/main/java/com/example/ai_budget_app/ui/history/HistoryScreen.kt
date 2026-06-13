@@ -133,12 +133,7 @@ fun HistoryScreen() {
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     dailyExpenses.forEach { expense ->
-                                        RecentItem(
-                                            store = expense.storeName,
-                                            info = expense.category,
-                                            price = "${NumberFormat.getNumberInstance(Locale.KOREA).format(expense.totalAmount)}원",
-                                            isHigh = false // TODO: logic for warning
-                                        )
+                                        ExpandableExpenseItem(expense)
                                     }
                                 }
                             }
@@ -147,6 +142,47 @@ fun HistoryScreen() {
                 }
                 
                 item { Spacer(modifier = Modifier.height(80.dp)) }
+            }
+        }
+    }
+}
+
+@Composable
+fun ExpandableExpenseItem(expense: com.example.ai_budget_app.data.local.ExpenseEntity) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+        Box(modifier = Modifier.clickable { expanded = !expanded }) {
+            RecentItem(
+                store = expense.storeName,
+                info = expense.category,
+                price = "${NumberFormat.getNumberInstance(Locale.KOREA).format(expense.totalAmount)}원",
+                isHigh = false // TODO: logic for warning
+            )
+        }
+        
+        if (expanded && expense.items.isNotEmpty()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .background(Color(0xFFF1F3F5), RoundedCornerShape(8.dp))
+                    .padding(12.dp)
+            ) {
+                expense.items.forEach { item ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(item.itemName, fontSize = 14.sp, color = Color.DarkGray, modifier = Modifier.weight(1f))
+                        Text(
+                            "${NumberFormat.getNumberInstance(Locale.KOREA).format(item.price)}원",
+                            fontSize = 14.sp,
+                            color = Color.DarkGray,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }

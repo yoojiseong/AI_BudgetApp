@@ -37,7 +37,8 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainHomeScreen(
-    onFabClick: () -> Unit
+    onFabClick: () -> Unit,
+    onViewAllClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val repository = remember { ExpenseRepository(AppDatabase.getDatabase(context).expenseDao()) }
@@ -82,7 +83,7 @@ fun MainHomeScreen(
     val comparisons by viewModel.publicDataComparisons.collectAsState()
 
     LaunchedEffect(expenses) {
-        if (expenses.isNotEmpty() && comparisons == null) {
+        if (expenses.isNotEmpty()) {
             viewModel.fetchPublicDataComparisons(expenses)
         }
     }
@@ -238,7 +239,7 @@ fun MainHomeScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text("최근 지출", fontWeight = FontWeight.Bold)
-                            Text("전체보기", color = Color(0xFF2979FF), fontSize = 12.sp, modifier = Modifier.clickable {  })
+                            Text("전체보기", color = Color(0xFF2979FF), fontSize = 12.sp, modifier = Modifier.clickable { onViewAllClick() })
                         }
                         Spacer(modifier = Modifier.height(16.dp))
                         
