@@ -8,6 +8,8 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -24,6 +26,7 @@ import com.example.ai_budget_app.data.local.AppDatabase
 import com.example.ai_budget_app.data.repository.ExpenseRepository
 import com.example.ai_budget_app.ui.home.RecentItem
 import java.text.NumberFormat
+import java.time.YearMonth
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -37,10 +40,12 @@ fun HistoryScreen() {
     
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategory by remember { mutableStateOf("전체") }
+    var selectedMonth by remember { mutableStateOf(YearMonth.now()) }
     val categories = listOf("전체", "식료품", "카페/간식", "편의점", "쇼핑", "기타")
 
     // Filter and group
     val filteredExpenses = expenses.filter {
+        it.date.startsWith(selectedMonth.toString()) &&
         (selectedCategory == "전체" || it.category == selectedCategory) &&
         (searchQuery.isBlank() || it.storeName.contains(searchQuery, ignoreCase = true) || it.items.any { item -> item.itemName.contains(searchQuery, ignoreCase = true) })
     }
@@ -61,6 +66,26 @@ fun HistoryScreen() {
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Month Selector
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = { selectedMonth = selectedMonth.minusMonths(1) }) {
+                    Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "이전 달")
+                }
+                Text(
+                    text = "${selectedMonth.year}년 ${selectedMonth.monthValue}월",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+                IconButton(onClick = { selectedMonth = selectedMonth.plusMonths(1) }) {
+                    Icon(Icons.Default.KeyboardArrowRight, contentDescription = "다음 달")
+                }
+            }
+
             // Search Bar
             Box(modifier = Modifier.padding(16.dp)) {
                 TextField(
