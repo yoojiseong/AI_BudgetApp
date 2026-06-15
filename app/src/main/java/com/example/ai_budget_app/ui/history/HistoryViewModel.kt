@@ -93,6 +93,12 @@ class HistoryViewModel(private val repository: ExpenseRepository) : ViewModel() 
             }
         }
     }
+
+    fun deleteExpense(expense: ExpenseEntity) {
+        viewModelScope.launch {
+            repository.deleteExpense(expense)
+        }
+    }
 }
 
 class HistoryViewModelFactory(private val repository: ExpenseRepository) : ViewModelProvider.Factory {

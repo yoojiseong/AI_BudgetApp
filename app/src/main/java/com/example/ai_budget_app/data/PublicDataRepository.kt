@@ -41,9 +41,10 @@ class PublicDataRepository {
                 }
                 
                 if (matchedItems.isNotEmpty()) {
+                    // 지점(판매업소)은 고려하지 않고, 검색된 모든 상품의 판매가격을 모아 평균 가격을 계산 (평균 시세 측정)
                     val prices = matchedItems.mapNotNull { it.price?.replace(",", "")?.toIntOrNull() }
                     if (prices.isNotEmpty()) {
-                        avgPrice = prices.sum() / prices.size
+                        avgPrice = kotlin.math.round(prices.average()).toInt()
                     }
                 }
             }

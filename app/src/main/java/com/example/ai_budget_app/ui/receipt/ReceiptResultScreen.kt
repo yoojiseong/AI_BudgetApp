@@ -70,12 +70,12 @@ fun ReceiptResultScreen(
                                 com.example.ai_budget_app.data.local.AppDatabase.getDatabase(context).expenseDao()
                             )
                             val expense = com.example.ai_budget_app.data.local.ExpenseEntity(
-                                storeName = receiptData!!.storeName,
-                                date = receiptData!!.date,
-                                category = receiptData!!.category,
-                                paymentMethod = receiptData!!.paymentMethod,
-                                items = receiptData!!.items,
-                                totalAmount = receiptData!!.items.sumOf { it.price }
+                                storeName = receiptData!!.storeName ?: "알 수 없는 매장",
+                                date = receiptData!!.date ?: "알 수 없는 날짜",
+                                category = receiptData!!.category ?: "기타",
+                                paymentMethod = receiptData!!.paymentMethod ?: "기타",
+                                items = receiptData!!.items ?: emptyList(),
+                                totalAmount = (receiptData!!.items ?: emptyList()).sumOf { it.price }
                             )
                             repository.insertExpense(expense)
                             // 저장 후 뒤로 가기 (또는 내역으로 이동)
@@ -161,7 +161,7 @@ fun ReceiptResultScreen(
                                     ) {
                                         Column {
                                             Text("${comp.item.itemName} (${receiptData!!.storeName})", fontWeight = FontWeight.Medium)
-                                            Text("평균보다 ${String.format("%.0f", comp.percentage)}% 높음", fontSize = 12.sp, color = Color.Gray)
+                                            Text("평균 시세보다 ${String.format("%.0f", comp.percentage)}% 높음", fontSize = 12.sp, color = Color.Gray)
                                         }
                                         Text("+${String.format("%,d", comp.difference)}원", fontWeight = FontWeight.Bold, color = Color(0xFFD32F2F))
                                     }

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
@@ -158,7 +159,10 @@ fun HistoryScreen() {
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     dailyExpenses.forEach { expense ->
-                                        ExpandableExpenseItem(expense)
+                                        ExpandableExpenseItem(
+                                            expense = expense,
+                                            onDelete = { viewModel.deleteExpense(expense) }
+                                        )
                                     }
                                 }
                             }
@@ -173,17 +177,40 @@ fun HistoryScreen() {
 }
 
 @Composable
-fun ExpandableExpenseItem(expense: com.example.ai_budget_app.data.local.ExpenseEntity) {
+fun ExpandableExpenseItem(expense: com.example.ai_budget_app.data.local.ExpenseEntity, onDelete: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("지출 내역 삭제") },
+            text = { Text("해당 지출 내역을 삭제하시겠습니까?") },
+            confirmButton = {
+                TextButton(onClick = { 
+                    showDeleteDialog = false
+                    onDelete() 
+                }) { Text("삭제", color = Color.Red) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) { Text("취소") }
+            }
+        )
+    }
 
     Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-        Box(modifier = Modifier.clickable { expanded = !expanded }) {
-            RecentItem(
-                store = expense.storeName,
-                info = expense.category,
-                price = "${NumberFormat.getNumberInstance(Locale.KOREA).format(expense.totalAmount)}원",
-                isHigh = false // TODO: logic for warning
-            )
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(modifier = Modifier.weight(1f).clickable { expanded = !expanded }) {
+                RecentItem(
+                    store = expense.storeName,
+                    info = expense.category,
+                    price = "${NumberFormat.getNumberInstance(Locale.KOREA).format(expense.totalAmount)}원",
+                    isHigh = false // TODO: logic for warning
+                )
+            }
+            IconButton(onClick = { showDeleteDialog = true }) {
+                Icon(Icons.Default.Delete, contentDescription = "삭제", tint = Color.Gray)
+            }
         }
         
         if (expanded && expense.items.isNotEmpty()) {
